@@ -14,10 +14,13 @@ mongoose.connect(mongoUri)
   .catch(err => console.log(err));
 
 // Routes
+app.use("/auth", require("./routes/auth"));
 app.use("/vehicles", require("./routes/vehicle"));
 app.use("/drivers", require("./routes/driver"));
 app.use("/trips", require("./routes/trip"));
 app.use("/maintenance", require("./routes/maintenance"));
+app.use("/expenses", require("./routes/expense"));
+app.use("/dashboard", require("./routes/dashboard"));
 
 app.listen(3000, () => {
   console.log("Backend running on http://localhost:3000");

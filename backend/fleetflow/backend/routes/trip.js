@@ -5,7 +5,7 @@ const Vehicle = require("../models/vehicle");
 const Driver = require("../models/Driver");
 
 const validateTrip = async (req, res, next) => {
-  const { vehicle, driver, cargo, state } = req.body;
+  const { vehicle, driver, origin, destination, cargo_weight_kg, status } = req.body;
   const errors = [];
 
   if (!vehicle || typeof vehicle !== "string" || vehicle.trim() === "") {
@@ -18,13 +18,19 @@ const validateTrip = async (req, res, next) => {
   } else if (!mongoose.Types.ObjectId.isValid(driver)) {
     errors.push("Invalid driver ID format");
   }
-  if (cargo === undefined || cargo === null || typeof cargo !== "number" || cargo < 0) {
-    errors.push("Cargo must be a non-negative number");
+  if (!origin || typeof origin !== "string" || origin.trim() === "") {
+    errors.push("Origin is required");
+  }
+  if (!destination || typeof destination !== "string" || destination.trim() === "") {
+    errors.push("Destination is required");
+  }
+  if (cargo_weight_kg === undefined || cargo_weight_kg === null || typeof cargo_weight_kg !== "number" || cargo_weight_kg < 0) {
+    errors.push("Cargo weight must be a non-negative number");
   }
 
-  const validStates = ["draft", "dispatched", "completed", "cancelled"];
-  if (state && !validStates.includes(state)) {
-    errors.push(`State must be one of: ${validStates.join(", ")}`);
+  const validStatuses = ["pending", "in_progress", "completed", "cancelled"];
+  if (status && !validStatuses.includes(status)) {
+    errors.push(`Status must be one of: ${validStatuses.join(", ")}`);
   }
 
   if (errors.length > 0) {
@@ -41,16 +47,16 @@ const validateTrip = async (req, res, next) => {
   if (v.status === "in_shop") {
     return res.status(400).json({ error: "Vehicle is in maintenance" });
   }
+  if (v.status === "retired") {
+    return res.status(400).json({ error: "Vehicle is retired" });
+  }
 
   const d = await Driver.findById(driver);
   if (!d) {
     return res.status(404).json({ error: "Driver not found" });
   }
-  if (d.status === "suspended") {
+  if (d.duty_status === "suspended") {
     return res.status(400).json({ error: "Driver is suspended" });
-  }
-  if (d.status === "off_duty") {
-    return res.status(400).json({ error: "Driver is off duty" });
   }
   if (d.licenseExpiry) {
     const expiryDate = new Date(d.licenseExpiry);
@@ -59,8 +65,8 @@ const validateTrip = async (req, res, next) => {
     }
   }
 
-  if (cargo > v.capacity) {
-    return res.status(400).json({ error: `Cargo (${cargo}) exceeds vehicle capacity (${v.capacity})` });
+  if (cargo_weight_kg > v.capacity) {
+    return res.status(400).json({ error: "Too heavy - cargo exceeds vehicle capacity" });
   }
 
   req.vehicle = v;
@@ -70,13 +76,13 @@ const validateTrip = async (req, res, next) => {
 
 router.post("/", validateTrip, async (req, res) => {
   try {
-    const { state } = req.body;
+    const { status } = req.body;
     
     const trip = await Trip.create(req.body);
 
-    if (state === "dispatched" || state === "completed") {
+    if (status === "in_progress" || status === "completed") {
       await Vehicle.findByIdAndUpdate(req.body.vehicle, { status: "on_trip" });
-      await Driver.findByIdAndUpdate(req.body.driver, { status: "on_duty" });
+      await Driver.findByIdAndUpdate(req.body.driver, { duty_status: "on_duty" });
     }
 
     res.status(201).json(trip);
@@ -87,7 +93,10 @@ router.post("/", validateTrip, async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const trips = await Trip.find().populate("vehicle").populate("driver");
+    const { status } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
+    const trips = await Trip.find(filter).populate("vehicle", "name plate").populate("driver", "name");
     res.json(trips);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -106,30 +115,46 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id/status", async (req, res) => {
   try {
+    const { status } = req.body;
+    const validStatuses = ["pending", "in_progress", "completed", "cancelled"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+
     const trip = await Trip.findById(req.params.id);
     if (!trip) {
       return res.status(404).json({ error: "Trip not found" });
     }
 
-    const oldState = trip.state;
-    const newState = req.body.state;
+    const oldStatus = trip.status;
+    const updatedTrip = await Trip.findByIdAndUpdate(req.params.id, { status }, { new: true });
 
-    const updatedTrip = await Trip.findByIdAndUpdate(req.params.id, req.body, { new: true });
-
-    if (newState === "completed" && oldState !== "completed") {
+    if (status === "completed" && oldStatus !== "completed") {
       await Vehicle.findByIdAndUpdate(trip.vehicle, { status: "available" });
-      await Driver.findByIdAndUpdate(trip.driver, { status: "available" });
-    } else if (newState === "cancelled" && oldState !== "cancelled") {
+      await Driver.findByIdAndUpdate(trip.driver, { duty_status: "on_duty" });
+    } else if (status === "cancelled" && oldStatus !== "cancelled") {
       await Vehicle.findByIdAndUpdate(trip.vehicle, { status: "available" });
-      await Driver.findByIdAndUpdate(trip.driver, { status: "available" });
-    } else if (newState === "dispatched" && oldState === "draft") {
+      await Driver.findByIdAndUpdate(trip.driver, { duty_status: "on_duty" });
+    } else if (status === "in_progress" && oldStatus === "pending") {
       await Vehicle.findByIdAndUpdate(trip.vehicle, { status: "on_trip" });
-      await Driver.findByIdAndUpdate(trip.driver, { status: "on_duty" });
+      await Driver.findByIdAndUpdate(trip.driver, { duty_status: "on_duty" });
     }
 
     res.json(updatedTrip);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put("/:id", async (req, res) => {
+  try {
+    const trip = await Trip.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!trip) {
+      return res.status(404).json({ error: "Trip not found" });
+    }
+    res.json(trip);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

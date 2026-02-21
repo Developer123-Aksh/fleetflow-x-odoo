@@ -2,7 +2,7 @@ const router = require("express").Router();
 const Vehicle = require("../models/vehicle");
 
 const validateVehicle = (req, res, next) => {
-  const { name, plate, capacity, odometer } = req.body;
+  const { name, plate, capacity, type, year } = req.body;
   const errors = [];
 
   if (!name || typeof name !== "string" || name.trim() === "") {
@@ -14,8 +14,9 @@ const validateVehicle = (req, res, next) => {
   if (capacity === undefined || capacity === null || typeof capacity !== "number" || capacity <= 0) {
     errors.push("Capacity must be a positive number");
   }
-  if (odometer !== undefined && odometer !== null && typeof odometer !== "number") {
-    errors.push("Odometer must be a number");
+  const validTypes = ["truck", "van", "bike"];
+  if (type && !validTypes.includes(type)) {
+    errors.push(`Type must be one of: ${validTypes.join(", ")}`);
   }
 
   if (errors.length > 0) {
@@ -26,6 +27,10 @@ const validateVehicle = (req, res, next) => {
 
 router.post("/", validateVehicle, async (req, res) => {
   try {
+    const existing = await Vehicle.findOne({ plate: req.body.plate });
+    if (existing) {
+      return res.status(400).json({ error: "License plate already exists" });
+    }
     const vehicle = await Vehicle.create(req.body);
     res.status(201).json(vehicle);
   } catch (err) {
@@ -35,7 +40,11 @@ router.post("/", validateVehicle, async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const vehicles = await Vehicle.find();
+    const { type, status } = req.query;
+    const filter = {};
+    if (type) filter.type = type;
+    if (status) filter.status = status;
+    const vehicles = await Vehicle.find(filter);
     res.json(vehicles);
   } catch (err) {
     res.status(500).json({ error: err.message });

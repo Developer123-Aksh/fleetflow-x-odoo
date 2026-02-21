@@ -1,225 +1,107 @@
-# fleetflow-x-odoo
+# FleetFlow - Fleet Management System
 
-🚛 FleetFlow – Modular Fleet & Logistics Management System (Odoo Hackathon)
+A complete fleet management system built for the Odoo Hackathon.
 
-FleetFlow is a centralized, rule-based digital fleet management system built on Odoo to replace inefficient manual logbooks.
-It optimizes fleet lifecycle, dispatching workflows, driver safety compliance, and financial performance tracking.
+## Tech Stack
 
-⚡ Built for Odoo Hackathon
-🎯 Focus: Automation • Compliance • Operational Intelligence • ROI Analytics
+- **Frontend:** React 19 + React Router
+- **Backend:** Node.js + Express + MongoDB (Mongoose)
+- **Authentication:** JWT
 
-📌 Problem Statement
+## Quick Start
 
-Traditional fleet operations rely heavily on:
+### Prerequisites
 
-Manual logbooks
+- Node.js 18+
+- MongoDB (local or Atlas)
 
-Unstructured expense tracking
+### Backend Setup
 
-Poor visibility of vehicle availability
+```bash
+cd backend/fleetflow/backend
+npm install
+npm start
+```
 
-No automated compliance checks
+Backend runs on `http://localhost:3000`
 
-No real-time financial insights
+### Frontend Setup
 
-This leads to:
+```bash
+cd frontend/frontend
+npm install
+npm start
+```
 
-Operational delays
+Frontend runs on `http://localhost:3001`
 
-Driver mismanagement
+## Features
 
-Compliance risks
+- **Authentication** - JWT-based login/register with role-based access
+- **Dashboard** - Real-time KPIs (Active Fleet, Maintenance Alerts, Utilization Rate)
+- **Vehicle Registry** - CRUD operations with vehicle type, make, model, capacity
+- **Driver Management** - License tracking, safety scores, duty status
+- **Trip Dispatcher** - Create trips with validation (cargo ≤ capacity)
+- **Maintenance** - Service logs with auto status updates (In Shop)
+- **Expenses** - Fuel and repair expense tracking per vehicle
+- **Analytics** - Fuel efficiency, ROI calculations, monthly summaries
 
-Revenue leakage
+## API Endpoints
 
-FleetFlow solves this by creating a centralized digital command center for logistics operations.
+| Module | Endpoints |
+|--------|-----------|
+| Auth | `/auth/register`, `/auth/login`, `/auth/me` |
+| Vehicles | `/vehicles` (GET, POST, PUT, DELETE) |
+| Drivers | `/drivers` (GET, POST, PUT, DELETE) |
+| Trips | `/trips` (GET, POST, PUT, DELETE) |
+| Maintenance | `/maintenance` (GET, POST, PUT, DELETE) |
+| Expenses | `/expenses` (GET, POST, PUT, DELETE) |
+| Dashboard | `/dashboard/stats`, `/dashboard/analytics` |
 
-🏗️ System Architecture Overview
+## Environment Variables
 
-Frontend: Modular Odoo UI with scannable data tables & status indicators
+**Backend** (`.env`):
+```
+MONGO_URI=mongodb://localhost:27017/fleetflow
+```
 
-Backend: Rule-based workflow engine
+**Frontend** (`.env`):
+```
+REACT_APP_API_URL=http://localhost:3000
+```
 
-Database: Relational models linking Vehicles, Drivers, Trips & Expenses
+## Default Test User
 
-Access Control: Role-Based Access Control (RBAC)
+- Email: `admin@fleet.com`
+- Password: `1234`
 
-👥 Target Users
-Role	Responsibilities
-Fleet Manager	Oversees vehicle lifecycle & maintenance
-Dispatcher	Assigns drivers & vehicles
-Safety Officer	Monitors license & compliance
-Financial Analyst	Tracks fuel, cost, ROI
-🧩 Core Modules
-🔐 1. Login & Authentication
+Or register a new user from the login page.
 
-Role-Based Access Control
+## Project Structure
 
-Manager / Dispatcher level access
+```
+fleetflow-x-odoo/
+├── backend/fleetflow/backend/
+│   ├── models/         # MongoDB schemas
+│   ├── routes/        # API endpoints
+│   └── server.js      # Express server
+├── frontend/frontend/
+│   ├── src/
+│   │   ├── pages/     # React pages
+│   │   ├── components/
+│   │   ├── context/   # Auth context
+│   │   └── api/       # API service
+│   └── public/
+└── README.md
+```
 
-Secure authentication
+## Running Tests (Backend)
 
-📊 2. Command Center Dashboard
+```bash
+cd backend/fleetflow/backend
+npm test
+```
 
-Real-time KPI Monitoring:
+## License
 
-🚗 Active Fleet (On Trip)
-
-🔧 Maintenance Alerts (In Shop)
-
-📦 Pending Cargo
-
-📈 Utilization Rate
-
-Filters by vehicle type & region
-
-🚘 3. Vehicle Registry (Asset Management)
-
-CRUD operations for:
-
-Model Name
-
-License Plate (Unique ID)
-
-Max Load Capacity
-
-Odometer Tracking
-
-Out-of-Service toggle
-
-🚚 4. Trip Dispatcher & Management
-
-Workflow:
-
-Draft → Dispatched → Completed → Cancelled
-
-Validation Rule:
-
-Cargo Weight ≤ Vehicle Capacity
-
-Automatic status updates:
-
-Vehicle → On Trip
-
-Driver → On Trip
-
-🛠️ 5. Maintenance & Service Logs
-
-Adding service log auto switches vehicle to "In Shop"
-
-Vehicle removed from dispatcher selection pool
-
-Preventative + reactive maintenance tracking
-
-⛽ 6. Expense & Fuel Logging
-
-Track:
-
-Fuel liters
-
-Cost
-
-Maintenance expenses
-
-Auto Calculation:
-
-Total Operational Cost = Fuel + Maintenance
-👨‍✈️ 7. Driver Performance & Compliance
-
-License expiry tracking (blocks expired drivers)
-
-Safety score system
-
-Trip completion rate
-
-Status:
-
-On Duty
-
-Off Duty
-
-Suspended
-
-📈 8. Operational Analytics & Financial Reports
-
-Metrics:
-
-Fuel Efficiency → km/L
-
-Vehicle ROI:
-
-ROI = (Revenue - (Maintenance + Fuel)) / Acquisition Cost
-
-Exports:
-
-CSV
-
-PDF
-
-Payroll & Audit reports
-
-🔁 Workflow Example
-
-Add Vehicle "Van-05" (500kg capacity)
-
-Add Driver "Alex" (license validated)
-
-Assign 450kg load
-✔ Validation Passed
-
-Status → On Trip
-
-Trip completed → Odometer updated
-
-Oil Change logged → Status → In Shop
-
-Analytics auto-update cost-per-km
-
-⚙️ Technical Highlights
-
-Real-time state synchronization
-
-Automated business rule validations
-
-Linked relational database structure
-
-Clean modular UI
-
-Scalable architecture
-
-Designed for enterprise fleet systems
-
-🧠 Business Impact
-
-FleetFlow enables:
-
-✅ Reduced downtime
-✅ Improved driver compliance
-✅ Automated validation rules
-✅ Accurate cost-per-km tracking
-✅ ROI-based fleet decision making
-
-🚀 Future Enhancements
-
-IoT integration (vehicle tracking)
-
-GPS live monitoring
-
-Predictive maintenance using AI
-
-Multi-warehouse logistics support
-
-Mobile companion app
-
-📦 Installation (Odoo Module Setup)
-# Clone repository
-git clone https://github.com/yourusername/odoo-fleetflow.git
-
-# Move module to Odoo addons directory
-# Restart Odoo server
-# Activate developer mode
-# Install module from Apps
-🏆 Hackathon Vision
-
-FleetFlow is designed not just as a project —
-but as a scalable enterprise-ready fleet intelligence platform.
+MIT
