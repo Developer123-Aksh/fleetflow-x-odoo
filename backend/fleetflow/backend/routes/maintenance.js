@@ -4,7 +4,7 @@ const Vehicle = require("../models/vehicle");
 const mongoose = require("mongoose");
 
 const validateMaintenance = async (req, res, next) => {
-  const { vehicle, note, cost } = req.body;
+  const { vehicle, service_type, cost } = req.body;
   const errors = [];
 
   if (!vehicle || typeof vehicle !== "string" || vehicle.trim() === "") {
@@ -16,6 +16,10 @@ const validateMaintenance = async (req, res, next) => {
     if (!v) {
       errors.push("Vehicle not found");
     }
+  }
+
+  if (!service_type || typeof service_type !== "string" || service_type.trim() === "") {
+    errors.push("Service type is required");
   }
 
   if (cost !== undefined && cost !== null && typeof cost !== "number") {
@@ -40,7 +44,10 @@ router.post("/", validateMaintenance, async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const maintenance = await Maintenance.find().populate("vehicle");
+    const { status } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
+    const maintenance = await Maintenance.find(filter).populate("vehicle", "name plate");
     res.json(maintenance);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -61,11 +68,21 @@ router.get("/:id", async (req, res) => {
 
 router.put("/:id", async (req, res) => {
   try {
-    const m = await Maintenance.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const m = await Maintenance.findById(req.params.id);
     if (!m) {
       return res.status(404).json({ error: "Maintenance record not found" });
     }
-    res.json(m);
+
+    const oldStatus = m.status;
+    const newStatus = req.body.status;
+
+    const updated = await Maintenance.findByIdAndUpdate(req.params.id, req.body, { new: true });
+
+    if (newStatus === "resolved" && oldStatus !== "resolved") {
+      await Vehicle.findByIdAndUpdate(m.vehicle, { status: "available" });
+    }
+
+    res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

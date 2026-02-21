@@ -2,20 +2,25 @@ const router = require("express").Router();
 const Driver = require("../models/Driver");
 
 const validateDriver = (req, res, next) => {
-  const { name, licenseExpiry, status } = req.body;
+  const { name, license_number, licenseExpiry, duty_status } = req.body;
   const errors = [];
 
   if (!name || typeof name !== "string" || name.trim() === "") {
     errors.push("Name is required");
   }
-  if (licenseExpiry) {
+  if (!license_number || typeof license_number !== "string" || license_number.trim() === "") {
+    errors.push("License number is required");
+  }
+  if (!licenseExpiry) {
+    errors.push("License expiry is required");
+  } else {
     const expiryDate = new Date(licenseExpiry);
     if (isNaN(expiryDate.getTime())) {
       errors.push("License expiry must be a valid date");
     }
   }
-  const validStatuses = ["on_duty", "off_duty", "suspended"];
-  if (status && !validStatuses.includes(status)) {
+  const validStatuses = ["on_duty", "on_break", "suspended"];
+  if (duty_status && !validStatuses.includes(duty_status)) {
     errors.push(`Status must be one of: ${validStatuses.join(", ")}`);
   }
 
@@ -67,6 +72,23 @@ router.put("/:id", validateDriver, async (req, res) => {
   }
 });
 
+router.put("/:id/status", async (req, res) => {
+  try {
+    const { duty_status } = req.body;
+    const validStatuses = ["on_duty", "on_break", "suspended"];
+    if (!validStatuses.includes(duty_status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+    const driver = await Driver.findByIdAndUpdate(req.params.id, { duty_status }, { new: true });
+    if (!driver) {
+      return res.status(404).json({ error: "Driver not found" });
+    }
+    res.json(driver);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.delete("/:id", async (req, res) => {
   try {
     const driver = await Driver.findByIdAndDelete(req.params.id);
@@ -74,6 +96,40 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ error: "Driver not found" });
     }
     res.json({ message: "Driver deleted" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/:id/complete", async (req, res) => {
+  try {
+    const driver = await Driver.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { tripsCompleted: 1 } },
+      { new: true }
+    );
+    if (!driver) {
+      return res.status(404).json({ error: "Driver not found" });
+    }
+    res.json(driver);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/:id/cancel", async (req, res) => {
+  try {
+    const driver = await Driver.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { tripsCancelled: 1, complaints_count: 1 }, $inc: { safety_score: -5 } },
+      { new: true }
+    );
+    if (!driver) {
+      return res.status(404).json({ error: "Driver not found" });
+    }
+    if (driver.safety_score < 0) driver.safety_score = 0;
+    await driver.save();
+    res.json(driver);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
